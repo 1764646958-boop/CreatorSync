@@ -6,5 +6,6 @@ const router = Router();
 
 router.use('/health', healthRouter);
 router.use('/adapters', adaptersRouter);
+router.use('/api/adapt', adaptersRouter);
 
 export default router;
