@@ -1,6 +1,7 @@
 export const PLATFORM_DEFINITIONS = [
   {
     id: 'wechat',
+    adapterId: 'wechat_official_account',
     name: '公众号',
     badge: '深度图文',
     description: '适合系统化观点、品牌内容与私域沉淀。',
@@ -14,6 +15,7 @@ export const PLATFORM_DEFINITIONS = [
   },
   {
     id: 'zhihu',
+    adapterId: 'zhihu',
     name: '知乎',
     badge: '问答社区',
     description: '适合经验拆解、理性分析与可信背书。',
@@ -27,6 +29,7 @@ export const PLATFORM_DEFINITIONS = [
   },
   {
     id: 'xiaohongshu',
+    adapterId: 'xiaohongshu',
     name: '小红书',
     badge: '种草笔记',
     description: '适合生活化表达、清单攻略与标签分发。',
@@ -40,6 +43,7 @@ export const PLATFORM_DEFINITIONS = [
   },
   {
     id: 'bilibili',
+    adapterId: 'bilibili',
     name: 'B站',
     badge: '视频社区',
     description: '适合脚本结构、互动表达与年轻化语境。',
@@ -73,9 +77,17 @@ const getDefaultPlatformConfig = () =>
     return configs;
   }, {});
 
+export const normalizeTags = (value) => {
+  const rawTags = Array.isArray(value) ? value : String(value ?? '').split(/[,，#\n]/u);
+
+  return Array.from(new Set(rawTags.map((tag) => String(tag).trim()).filter(Boolean)));
+};
+
 export const createDefaultTargetConfig = () => ({
   version: 1,
+  sourceTitle: '',
   sourceContent: '',
+  sourceTags: [],
   selectedPlatforms: [],
   platformConfigs: getDefaultPlatformConfig(),
   updatedAt: new Date().toISOString(),
@@ -96,7 +108,9 @@ export const normalizeTargetConfig = (candidate) => {
   return {
     ...defaults,
     ...candidate,
+    sourceTitle: typeof candidate.sourceTitle === 'string' ? candidate.sourceTitle : '',
     sourceContent: typeof candidate.sourceContent === 'string' ? candidate.sourceContent : '',
+    sourceTags: normalizeTags(candidate.sourceTags ?? []),
     selectedPlatforms,
     platformConfigs: PLATFORM_DEFINITIONS.reduce((configs, platform) => {
       configs[platform.id] = {
@@ -133,8 +147,11 @@ export const updatePlatformConfig = (targetConfig, platformId, field, value) => 
   updatedAt: new Date().toISOString(),
 });
 
-export const updateSourceContent = (targetConfig, sourceContent) => ({
+export const updateSourceDraft = (targetConfig, field, value) => ({
   ...targetConfig,
-  sourceContent,
+  [field]: field === 'sourceTags' ? normalizeTags(value) : value,
   updatedAt: new Date().toISOString(),
 });
+
+export const updateSourceContent = (targetConfig, sourceContent) =>
+  updateSourceDraft(targetConfig, 'sourceContent', sourceContent);

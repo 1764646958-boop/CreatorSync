@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Response, Router } from 'express';
 import { getPlatformAdapter, listPlatformAdapters } from '../adapters/registry';
 import { PlatformAdapterInput, PlatformId } from '../adapters/types';
 import { HttpError } from '../types/http-error';
@@ -17,23 +17,58 @@ router.get('/', (_req, res) => {
   );
 });
 
-router.post('/:platform/adapt', async (req, res, next) => {
+const handleAdaptRequest = async (platform: PlatformId, body: unknown, res: Response) => {
+  const adapter = getPlatformAdapter(platform);
+
+  if (!adapter) {
+    throw new HttpError(`Unsupported platform adapter: ${platform}`, 404);
+  }
+
+  const input = normalizeAdapterInput(body);
+  const result = await adapter.adapt(input);
+
+  sendSuccess(res, result);
+};
+
+router.post('/', async (req, res, next) => {
   try {
-    const platform = req.params.platform as PlatformId;
-    const adapter = getPlatformAdapter(platform);
-
-    if (!adapter) {
-      throw new HttpError(`Unsupported platform adapter: ${platform}`, 404);
-    }
-
-    const input = normalizeAdapterInput(req.body);
-    const result = await adapter.adapt(input);
-
-    sendSuccess(res, result);
+    const platform = pickPlatform(req.body);
+    await handleAdaptRequest(platform, req.body, res);
   } catch (error) {
     next(error);
   }
 });
+
+router.post('/:platform', async (req, res, next) => {
+  try {
+    await handleAdaptRequest(req.params.platform as PlatformId, req.body, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/:platform/adapt', async (req, res, next) => {
+  try {
+    await handleAdaptRequest(req.params.platform as PlatformId, req.body, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+const pickPlatform = (body: unknown): PlatformId => {
+  if (!body || typeof body !== 'object') {
+    throw new HttpError('Request body must include a platform field when using /api/adapt.', 400);
+  }
+
+  const payload = body as { platform?: unknown; targetPlatform?: unknown };
+  const platform = payload.platform ?? payload.targetPlatform;
+
+  if (typeof platform !== 'string' || platform.trim().length === 0) {
+    throw new HttpError('Request body must include a string platform field when using /api/adapt.', 400);
+  }
+
+  return platform.trim() as PlatformId;
+};
 
 const normalizeAdapterInput = (body: unknown): PlatformAdapterInput => {
   if (!body || typeof body !== 'object') {
