@@ -8,20 +8,12 @@ out/
 # Production builds
 dist/
 build/
-
-# Environment files
-.env*.local
-
-# Logs
-# Build outputs
-.next/
-dist/
-build/
 coverage/
 
 # Environment files
 .env
 .env.*
+.env*.local
 !.env.example
 
 # Logs
