@@ -1,55 +1,42 @@
+## Backend Unified Adaptation API
 
-# CreatorSync
+CreatorSync backend exposes `POST /api/adapt` for generating multiple platform versions from one draft.
 
-CreatorSync 是一个面向创作者的多平台内容发布助手。项目目标是帮助创作者在统一工作流中管理内容草稿、发布配置和多平台分发流程。
+The endpoint accepts:
 
-当前项目聚焦于：
+- `draft`
+- `platforms`
+- optional per-platform `targetConfig`
 
-- AI 驱动的多平台内容改写
-- 平台风格与格式自动适配
-- 可扩展 Adapter 架构
-- 一键模拟发布工作流
-- 发布历史记录与 Markdown / JSON 导出
-- 持续 PR 工程化交付
+and dispatches requests through the registered platform adapter architecture.
 
-> 当前仓库处于第一阶段开发中，已完成基础 monorepo 工程结构与前后端基础能力初始化，并逐步构建内容输入与平台配置能力。
+Features:
+
+- Multi-platform adaptation in a single request
+- Unified response structure
+- Shared prompt template loading
+- Adapter-based content transformation
+- Deterministic mock fallback mode
+
+Prompt templates for the unified adaptation flow live in `prompts/`.
+
+No new third-party dependency was added; local development works without `OPENAI_API_KEY` by using deterministic mock fallback content.
 
 ---
 
-## 技术栈
+## Publish History & Export
 
-- Monorepo：npm workspaces
-- Frontend：Next.js、TypeScript、Tailwind CSS
-- Backend：Express、TypeScript
-- Runtime：Node.js 20+、npm 10+
+CreatorSync records adaptation and publishing activity into a local publish history store.
 
----
+After a successful adaptation or mock publishing operation, the backend saves:
 
-## 目录结构
+- Platform
+- Publish time
+- Title
+- Summary
+- Publish status
+
+History is stored in:
 
 ```text
-CreatorSync/
-├── backend/
-├── frontend/
-├── docs/
-├── prompts/
-├── .github/
-├── .env.example
-├── package.json
-└── README.md
-```
-
----
-
-## 发布历史与导出
-
-本 PR 在现有平台改写流程中增加本地发布历史：后端每次完成平台 Adapter 改写/模拟发布后，会保存平台、发布时间、标题、摘要和状态到 `PUBLISH_HISTORY_FILE` 指向的 JSON 文件，默认路径为 `./data/publish-history.json`。
-
-前端工作台顶部导航提供 **History** 入口，历史区可查看记录，并可直接导出：
-
-- Markdown：`GET /history/export?format=markdown`
-- JSON：`GET /history/export?format=json`
-
-本功能未新增第三方业务依赖；如需修改历史存储位置，请在 `.env` 中配置 `PUBLISH_HISTORY_FILE`，并参考 `.env.example`。
-
-来源说明：历史记录数据模型、导出机制和列表展示均为本 PR 原创实现，未复用个人旧代码、旧模板或旧 prompt。
+./data/publish-history.json
