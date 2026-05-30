@@ -79,7 +79,6 @@ const getDefaultPlatformConfig = () =>
 
 export const normalizeTags = (value) => {
   const rawTags = Array.isArray(value) ? value : String(value ?? '').split(/[,，#\n]/u);
-
   return Array.from(new Set(rawTags.map((tag) => String(tag).trim()).filter(Boolean)));
 };
 
@@ -95,14 +94,11 @@ export const createDefaultTargetConfig = () => ({
 
 export const normalizeTargetConfig = (candidate) => {
   const defaults = createDefaultTargetConfig();
+  if (!candidate || typeof candidate !== 'object') return defaults;
 
-  if (!candidate || typeof candidate !== 'object') {
-    return defaults;
-  }
-
-  const validPlatformIds = new Set(PLATFORM_DEFINITIONS.map((platform) => platform.id));
+  const validPlatformIds = new Set(PLATFORM_DEFINITIONS.map((p) => p.id));
   const selectedPlatforms = Array.isArray(candidate.selectedPlatforms)
-    ? candidate.selectedPlatforms.filter((platformId) => validPlatformIds.has(platformId))
+    ? Array.from(new Set(candidate.selectedPlatforms.filter((id) => validPlatformIds.has(id))))
     : [];
 
   return {
@@ -124,34 +120,43 @@ export const normalizeTargetConfig = (candidate) => {
 };
 
 export const togglePlatform = (targetConfig, platformId) => {
-  const selectedPlatforms = targetConfig.selectedPlatforms.includes(platformId)
-    ? targetConfig.selectedPlatforms.filter((selectedId) => selectedId !== platformId)
-    : [...targetConfig.selectedPlatforms, platformId];
+  const validPlatformIds = new Set(PLATFORM_DEFINITIONS.map((p) => p.id));
+  if (!validPlatformIds.has(platformId)) return normalizeTargetConfig(targetConfig);
+
+  const normalizedConfig = normalizeTargetConfig(targetConfig);
+  const selectedPlatforms = normalizedConfig.selectedPlatforms.includes(platformId)
+    ? normalizedConfig.selectedPlatforms.filter((id) => id !== platformId)
+    : [...normalizedConfig.selectedPlatforms, platformId];
+
+  return { ...normalizedConfig, selectedPlatforms, updatedAt: new Date().toISOString() };
+};
+
+export const updatePlatformConfig = (targetConfig, platformId, field, value) => {
+  const normalizedConfig = normalizeTargetConfig(targetConfig);
+  if (!PLATFORM_DEFINITIONS.some(p => p.id === platformId) || !Object.hasOwn(FIELD_OPTIONS, field)) {
+    return normalizedConfig;
+  }
 
   return {
-    ...targetConfig,
-    selectedPlatforms,
+    ...normalizedConfig,
+    platformConfigs: {
+      ...normalizedConfig.platformConfigs,
+      [platformId]: {
+        ...normalizedConfig.platformConfigs[platformId],
+        [field]: FIELD_OPTIONS[field].includes(value) ? value : normalizedConfig.platformConfigs[platformId][field],
+      },
+    },
     updatedAt: new Date().toISOString(),
   };
 };
 
-export const updatePlatformConfig = (targetConfig, platformId, field, value) => ({
-  ...targetConfig,
-  platformConfigs: {
-    ...targetConfig.platformConfigs,
-    [platformId]: {
-      ...targetConfig.platformConfigs[platformId],
-      [field]: value,
-    },
-  },
-  updatedAt: new Date().toISOString(),
-});
-
+// --- 合并更新方法 ---
 export const updateSourceDraft = (targetConfig, field, value) => ({
-  ...targetConfig,
+  ...normalizeTargetConfig(targetConfig),
   [field]: field === 'sourceTags' ? normalizeTags(value) : value,
   updatedAt: new Date().toISOString(),
 });
 
+// 保留便捷方法
 export const updateSourceContent = (targetConfig, sourceContent) =>
   updateSourceDraft(targetConfig, 'sourceContent', sourceContent);
