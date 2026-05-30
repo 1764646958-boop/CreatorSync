@@ -2,6 +2,8 @@ declare module 'express' {
   export interface Request {
     method: string;
     originalUrl: string;
+    params: Record<string, string>;
+    body: unknown;
   }
 
   export interface Response<T = unknown> {
@@ -17,6 +19,7 @@ declare module 'express' {
 
   export interface Router {
     get(path: string, handler: (req: Request, res: Response, next: NextFunction) => void): this;
+    post(path: string, handler: (req: Request, res: Response, next: NextFunction) => void | Promise<void>): this;
     use(path: string, router: Router): this;
   }
 
