@@ -1,3 +1,5 @@
+import { PublishHistory } from "@/components/PublishHistory";
+
 const previewCards = [
   {
     platform: "LinkedIn",
@@ -62,6 +64,8 @@ export function Workspace() {
           </article>
         ))}
       </div>
+
+      <PublishHistory />
 
       <section className="rounded-3xl border border-dashed border-brand-100 bg-brand-50/70 p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

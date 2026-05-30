@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getPlatformAdapter, listPlatformAdapters } from '../adapters/registry';
 import { PlatformAdapterInput, PlatformId } from '../adapters/types';
 import { HttpError } from '../types/http-error';
+import { saveAdapterResultToHistory } from '../history';
 import { sendSuccess } from '../utils/response';
 
 const router = Router();
@@ -28,6 +29,7 @@ router.post('/:platform/adapt', async (req, res, next) => {
 
     const input = normalizeAdapterInput(req.body);
     const result = await adapter.adapt(input);
+    saveAdapterResultToHistory(result);
 
     sendSuccess(res, result);
   } catch (error) {
