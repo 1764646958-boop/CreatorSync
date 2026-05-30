@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PublishHistory } from "@/components/PublishHistory";
 
 type PublishStatus = "idle" | "publishing" | "success" | "failed";
 
@@ -88,6 +89,7 @@ export function Workspace() {
           forceFail,
         }),
       });
+
       const payload = (await response.json()) as {
         success?: boolean;
         data?: PublishTask;
@@ -101,9 +103,9 @@ export function Workspace() {
       setPublishResults((current) => ({
         ...current,
         [version.id]: {
-          status: payload.data?.status === "success" ? "success" : "failed",
+          status: payload.data.status === "success" ? "success" : "failed",
           task: payload.data,
-          error: payload.data?.error,
+          error: payload.data.error,
         },
       }));
     } catch (error) {
@@ -124,9 +126,7 @@ export function Workspace() {
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">
             Generate → Confirm → Publish
           </p>
-          <h2 className="mt-2 text-2xl font-bold text-ink">
-            模拟发布工作台
-          </h2>
+          <h2 className="mt-2 text-2xl font-bold text-ink">模拟发布工作台</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
             这里不接入真实平台接口，只调用后端 mock publish 任务，演示平台版本确认后的一键发布闭环和状态反馈。
           </p>
@@ -186,6 +186,8 @@ export function Workspace() {
         })}
       </div>
 
+      <PublishHistory />
+
       <section className="rounded-3xl border border-dashed border-brand-100 bg-brand-50/70 p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -227,7 +229,9 @@ function PublishStatusPanel({ result }: { result: PublishResult }) {
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
         <p className="font-bold">发布成功</p>
         <p className="mt-1 font-mono text-xs">任务 ID：{result.task.taskId}</p>
-        <p className="mt-1 text-xs">平台：{result.task.platform} · 时间：{formatDateTime(result.task.timestamp)}</p>
+        <p className="mt-1 text-xs">
+          平台：{result.task.platform} · 时间：{formatDateTime(result.task.timestamp)}
+        </p>
       </div>
     );
   }
@@ -236,9 +240,7 @@ function PublishStatusPanel({ result }: { result: PublishResult }) {
     <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
       <p className="font-bold">发布失败</p>
       <p className="mt-1 text-xs">{result.error ?? result.task?.message ?? "模拟发布失败，请重试。"}</p>
-      {result.task ? (
-        <p className="mt-1 font-mono text-xs">任务 ID：{result.task.taskId}</p>
-      ) : null}
+      {result.task ? <p className="mt-1 font-mono text-xs">任务 ID：{result.task.taskId}</p> : null}
     </div>
   );
 }

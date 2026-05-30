@@ -2,6 +2,7 @@ import { Response, Router } from 'express';
 import { getPlatformAdapter, listPlatformAdapters } from '../adapters/registry';
 import { PlatformAdapterInput, PlatformId } from '../adapters/types';
 import { HttpError } from '../types/http-error';
+import { saveAdapterResultToHistory } from '../history';
 import { sendSuccess } from '../utils/response';
 
 const router = Router();
@@ -26,6 +27,8 @@ const handleAdaptRequest = async (platform: PlatformId, body: unknown, res: Resp
 
   const input = normalizeAdapterInput(body);
   const result = await adapter.adapt(input);
+
+  saveAdapterResultToHistory(result);
 
   sendSuccess(res, result);
 };
@@ -80,6 +83,7 @@ const normalizeAdapterInput = (body: unknown): PlatformAdapterInput => {
     draft?: Partial<PlatformAdapterInput> & { content?: unknown; sourceContent?: unknown };
     sourceContent?: unknown;
   };
+
   const draft = payload.draft && typeof payload.draft === 'object' ? payload.draft : payload;
   const bodyText = pickBodyText(draft);
 
