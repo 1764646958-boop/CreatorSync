@@ -1,0 +1,31 @@
+{
+  "name": "creatorsync-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CreatorSync backend service skeleton - Express + TypeScript API layer for AI rewriting and publishing workflows",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "creatorsync",
+    "backend",
+    "express",
+    "ai",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "2.8.5",
+    "dotenv": "16.4.7",
+    "express": "4.21.2"
+  },
+  "devDependencies": {
+    "ts-node-dev": "2.0.0",
+    "typescript": "5.7.2"
+  }
+}

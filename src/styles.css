@@ -1,0 +1,178 @@
+:root {
+  color: #172033;
+  background: #f5f7fb;
+  font-family:
+    Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.app-shell {
+  width: min(960px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 48px 0;
+}
+
+.hero,
+.editor-card {
+  border: 1px solid #e0e7f2;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 80px rgba(55, 80, 130, 0.12);
+}
+
+.hero {
+  margin-bottom: 24px;
+  padding: 36px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #5268dd;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 12px;
+  font-size: clamp(2rem, 6vw, 4rem);
+  line-height: 1;
+}
+
+.hero-copy {
+  max-width: 620px;
+  margin-bottom: 0;
+  color: #5d6b83;
+  font-size: 1.1rem;
+}
+
+.editor-card {
+  padding: 28px;
+}
+
+.editor-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.editor-header h2 {
+  margin-bottom: 0;
+  font-size: 1.7rem;
+}
+
+.save-status {
+  margin: 0;
+  border-radius: 999px;
+  background: #edf7ee;
+  color: #217a3b;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.editor-form {
+  display: grid;
+  gap: 18px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  color: #303a4f;
+  font-weight: 800;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid #cfd9ea;
+  border-radius: 18px;
+  background: #fbfcff;
+  color: #172033;
+  font: inherit;
+  font-weight: 500;
+  outline: none;
+  padding: 14px 16px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+textarea {
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
+  border-color: #5268dd;
+  box-shadow: 0 0 0 4px rgba(82, 104, 221, 0.14);
+}
+
+.draft-preview {
+  margin-top: 22px;
+  border-radius: 20px;
+  background: #f7f9ff;
+  padding: 18px;
+}
+
+.draft-preview h3 {
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+.empty-messages {
+  margin: 0;
+  padding-left: 18px;
+  color: #a85d05;
+}
+
+.success-message {
+  color: #217a3b;
+}
+
+.tag-preview {
+  margin: 12px 0 0;
+  color: #5d6b83;
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    width: min(100% - 20px, 960px);
+    padding: 24px 0;
+  }
+
+  .hero,
+  .editor-card {
+    border-radius: 22px;
+    padding: 22px;
+  }
+
+  .editor-header {
+    display: grid;
+  }
+
+  .save-status {
+    width: fit-content;
+    white-space: normal;
+  }
+}

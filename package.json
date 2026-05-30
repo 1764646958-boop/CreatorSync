@@ -2,9 +2,23 @@
   "name": "creatorsync",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
+  "description": "CreatorSync monorepo for a multi-platform content publishing assistant.",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
-    "dev": "python3 -m http.server 4173 --directory frontend",
-    "test": "node frontend/tests/targetConfig.test.js"
-  }
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "dev:backend": "npm run dev --workspace backend",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "license": "UNLICENSED"
 }
