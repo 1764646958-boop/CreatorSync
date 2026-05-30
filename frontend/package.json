@@ -1,0 +1,14 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CreatorSync frontend workspace placeholder for Next.js, TypeScript and Tailwind CSS.",
+  "scripts": {
+    "dev": "node -e \"console.log('Frontend workspace initialized. Next.js dev server will be wired in a follow-up PR.')\"",
+    "build": "node -e \"console.log('Frontend build placeholder: no business code yet.')\"",
+    "typecheck": "node -e \"console.log('Frontend typecheck placeholder: TypeScript config will be expanded with app code.')\"",
+    "lint": "node -e \"console.log('Frontend lint placeholder: lint rules will be enabled with app code.')\""
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
