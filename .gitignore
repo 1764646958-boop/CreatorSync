@@ -13,6 +13,19 @@ build/
 .env*.local
 
 # Logs
+# Build outputs
+.next/
+dist/
+build/
+coverage/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -20,3 +33,4 @@ pnpm-debug.log*
 
 # System files
 .DS_Store
+Thumbs.db

@@ -1,0 +1,13 @@
+{
+  "name": "backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CreatorSync backend workspace placeholder for Express and TypeScript.",
+  "scripts": {
+    "dev": "node -e \"console.log('Backend workspace initialized. Express dev server will be wired in a follow-up PR.')\"",
+    "build": "node -e \"console.log('Backend build placeholder: no business code yet.')\"",
+    "typecheck": "node -e \"console.log('Backend typecheck placeholder: TypeScript config will be expanded with server code.')\""
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
