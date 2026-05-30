@@ -48,6 +48,26 @@ Example request:
 }
 ```
 
+## WeChat Official Accounts adapter
+
+This PR adds a WeChat Official Accounts content adapter exposed through the same shared platform adapter contract.
+
+- `GET /adapters` now includes `wechat_official_account` in the registered adapter list.
+- `POST /adapters/wechat_official_account/adapt` accepts the unified draft input shape and returns compatible structured content with `content.title`, `content.body`, `content.tags`, `content.assets`, and `content.platformFields`.
+- `POST /adapters/wechat/adapt` is also accepted as a compatibility alias for frontend target configs that use the shorter `wechat` platform id; the normalized result still reports `platform: "wechat_official_account"`.
+- The adapter deterministically expands source material into a public-account long-form article with a title, 导语, numbered subheadings, short paragraphs, layout hints, image placeholders, and a closing call-to-action.
+- No third-party AI SDK or runtime dependency was added. The adapter always provides stable mock fallback output through `generationMode: "mock_fallback"` when no external AI integration is configured.
+
+Example request:
+
+```json
+{
+  "title": "用统一工作流提升内容分发效率",
+  "body": "CreatorSync 帮助创作者把一段原始内容改写成不同平台适合的版本。它强调统一草稿、平台配置、预览和发布准备。公众号版本需要导语、小标题、分段和结尾引导。",
+  "tags": ["内容分发"]
+}
+```
+
 ## Source note
 
-The Xiaohongshu and Zhihu style rules, prompt-like structures, and mock fallback wording are original to their PRs. No historical business code, old prompt template, or personal project text-processing logic was reused for the Zhihu adapter.
+The Xiaohongshu, Zhihu, and WeChat Official Accounts style rules, prompt-like structures, article layout rules, and mock fallback wording are original to their PRs. No historical business code, old prompt template, old article template, or personal project text-processing logic was reused for the WeChat Official Accounts adapter.
