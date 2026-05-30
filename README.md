@@ -36,3 +36,12 @@ CreatorSync/
 ├── .env.example
 ├── package.json
 └── README.md
+```
+
+---
+
+## Backend unified adaptation API
+
+CreatorSync backend now exposes `POST /api/adapt` for generating multiple platform versions from one draft. The endpoint accepts `draft`, `platforms`, and optional per-platform `targetConfig`, dispatches to registered platform adapters, and returns a uniform `results[]` response for frontend consumption.
+
+Prompt templates for the unified adaptation flow live in `prompts/`. No new third-party dependency was added; local development works without `OPENAI_API_KEY` by using deterministic mock fallback content.
