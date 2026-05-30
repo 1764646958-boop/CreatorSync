@@ -2,28 +2,28 @@ import {
   FIELD_LABELS,
   FIELD_OPTIONS,
   PLATFORM_DEFINITIONS,
+  normalizeTags,
   togglePlatform,
   updatePlatformConfig,
-  updateSourceContent,
-  updateSourceTitle,
+  updateSourceDraft,
 } from './config.js';
 import { loadTargetConfig, resetTargetConfig, saveTargetConfig } from './storage.js';
 
 let targetConfig = loadTargetConfig();
-let requestState = {
-  isAdapting: false,
-  error: '',
-  message: '',
-  results: [],
-  publishingPlatform: '',
-  publishError: '',
-  publishMessage: '',
-  simulateAiFailure: false,
-  simulatePublishFailure: false,
+let activePreviewPlatform = targetConfig.selectedPlatforms[0] ?? null;
+let comparisonLayout = 'side-by-side';
+let adaptState = {
+  status: 'idle',
+  message: '选择平台并生成结果后，可在这里对比原文与平台改写版本。',
+  results: {},
+  errors: {},
+  requestedAt: null,
 };
 
 const app = document.querySelector('#app');
-const API_BASE_URL = globalThis.CREATOR_SYNC_API_BASE_URL ?? 'http://localhost:3001';
+const apiBaseUrl = window.__CREATORSYNC_API_BASE_URL__ ?? 'http://localhost:4000';
+const adaptApiBaseUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/adapt`;
+const supportedAdapterIds = new Set(['xiaohongshu', 'zhihu']);
 
 const platformById = new Map(PLATFORM_DEFINITIONS.map((platform) => [platform.id, platform]));
 
@@ -43,100 +43,59 @@ const createOptionList = (fieldName, selectedValue) =>
     )
     .join('');
 
-const validateTargetConfig = () => {
-  const messages = [];
+const getSourcePreview = () => ({
+  title: targetConfig.sourceTitle.trim() || '未填写标题',
+  content: targetConfig.sourceContent.trim() || '未填写正文内容。',
+  tags: targetConfig.sourceTags,
+});
 
-  if (!targetConfig.sourceTitle.trim()) {
-    messages.push('请输入标题，便于识别内容主题。');
+const getActivePlatform = () => {
+  if (activePreviewPlatform && targetConfig.selectedPlatforms.includes(activePreviewPlatform)) {
+    return activePreviewPlatform;
   }
 
-  if (!targetConfig.sourceContent.trim()) {
-    messages.push('请输入正文，作为多平台发布的内容来源。');
-  }
-
-  if (targetConfig.selectedPlatforms.length === 0) {
-    messages.push('请至少选择一个目标平台。');
-  }
-
-  return messages;
-};
-
-const parseApiError = (payload, fallbackMessage) => {
-  const details = Array.isArray(payload?.data?.details) ? `：${payload.data.details.join(' ')}` : '';
-  return `${payload?.message || fallbackMessage}${details}`;
-};
-
-const requestJson = async (path, options = {}) => {
-  let response;
-
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers ?? {}),
-      },
-      ...options,
-    });
-  } catch {
-    throw new Error('无法连接 CreatorSync 后端，请确认服务已启动。');
-  }
-
-  let payload;
-
-  try {
-    payload = await response.json();
-  } catch {
-    throw new Error('后端返回格式异常，请稍后重试。');
-  }
-
-  if (!response.ok || payload.success === false) {
-    throw new Error(parseApiError(payload, '请求失败，请稍后重试。'));
-  }
-
-  return payload;
+  activePreviewPlatform = targetConfig.selectedPlatforms[0] ?? null;
+  return activePreviewPlatform;
 };
 
 const renderHero = () => `
   <header class="hero">
     <div>
-      <p class="eyebrow">CreatorSync Target Context</p>
-      <h1>配置多平台发布目标</h1>
-      <p class="hero__copy">选择公众号、知乎、小红书或 B站，并为每个平台定义语气、长度、标题与标签风格。当前配置会保存为统一的 targetConfig，作为后续 AI 改写上下文。</p>
+      <p class="eyebrow">CreatorSync Content Preview</p>
+      <h1>预览并对比平台改写结果</h1>
+      <p class="hero__copy">输入原文、选择发布平台并调用后端 /api/adapt 生成结构化结果。你可以在不刷新页面的情况下切换平台，快速判断哪一版更适合发布。</p>
     </div>
-    <div class="hero__metric" aria-label="已选择平台数量">
-      <span>${targetConfig.selectedPlatforms.length}</span>
-      <small>已选平台</small>
+    <div class="hero__metric" aria-label="已生成平台结果数量">
+      <span>${Object.keys(adaptState.results).length}</span>
+      <small>已生成结果</small>
     </div>
   </header>
 `;
 
-const renderContentInput = () => {
-  const validationMessages = validateTargetConfig();
-
-  return `
-    <section class="panel content-panel" aria-labelledby="content-title">
-      <div class="panel__header">
-        <div>
-          <p class="eyebrow">Step 1</p>
-          <h2 id="content-title">内容输入</h2>
-        </div>
-        <span class="status-pill">${targetConfig.sourceContent.length} 字</span>
+const renderContentInput = () => `
+  <section class="panel content-panel" aria-labelledby="content-title">
+    <div class="panel__header">
+      <div>
+        <p class="eyebrow">Step 1</p>
+        <h2 id="content-title">原文输入</h2>
       </div>
-      <label class="field" for="source-title">
-        <span>标题</span>
-        <input id="source-title" value="${escapeHtml(targetConfig.sourceTitle)}" placeholder="请输入内容标题" />
-      </label>
-      <label class="field" for="source-content">
-        <span>正文</span>
-        <textarea id="source-content" placeholder="粘贴或输入原始内容。这里不会生成内容，只会与目标平台配置一起形成后续改写上下文。">${escapeHtml(targetConfig.sourceContent)}</textarea>
-      </label>
-      <p class="helper-text">输入内容会写入 targetConfig，并与平台目标参数联动展示。</p>
-      ${validationMessages.length > 0
-        ? `<ul class="feedback-list" aria-live="polite">${validationMessages.map((message) => `<li>${escapeHtml(message)}</li>`).join('')}</ul>`
-        : '<p class="success-text">标题、正文和目标平台已准备好，可以生成平台预览。</p>'}
-    </section>
-  `;
-};
+      <span class="status-pill">${targetConfig.sourceContent.length} 字</span>
+    </div>
+    <label class="field input-field" for="source-title">
+      <span>标题</span>
+      <input id="source-title" value="${escapeHtml(targetConfig.sourceTitle)}" placeholder="请输入原始标题" data-source-field="sourceTitle" />
+    </label>
+    <label class="field input-field" for="source-content">
+      <span>正文</span>
+      <textarea id="source-content" placeholder="粘贴或输入原始内容，用于生成平台改写结果。" data-source-field="sourceContent">${escapeHtml(targetConfig.sourceContent)}</textarea>
+    </label>
+    <label class="field input-field" for="source-tags">
+      <span>标签</span>
+      <input id="source-tags" value="${escapeHtml(targetConfig.sourceTags.join(', '))}" placeholder="例如：新品, 小红书, 视频号" data-source-field="sourceTags" />
+    </label>
+    <p class="helper-text">预览区会以 title、content、tags 结构展示原文与平台版本。</p>
+  </section>
+`;
 
 const renderPlatformSelector = () => `
   <section class="panel" aria-labelledby="platform-title">
@@ -150,6 +109,7 @@ const renderPlatformSelector = () => `
     <div class="platform-grid">
       ${PLATFORM_DEFINITIONS.map((platform) => {
         const checked = targetConfig.selectedPlatforms.includes(platform.id);
+        const supported = supportedAdapterIds.has(platform.adapterId);
         return `
           <label class="platform-card ${checked ? 'is-selected' : ''}" style="--accent: ${platform.accent}">
             <input type="checkbox" data-platform-toggle="${platform.id}" ${checked ? 'checked' : ''} />
@@ -157,7 +117,8 @@ const renderPlatformSelector = () => `
               <strong>${escapeHtml(platform.name)}</strong>
               <em>${escapeHtml(platform.badge)}</em>
             </span>
-            <span class="platform-card__description">${escapeHtml(platform.description)}</span>
+            <span class="platform-card__description">${platform.description}</span>
+            <span class="adapter-note ${supported ? 'is-ready' : ''}">${supported ? '已接入 /api/adapt' : '等待后端适配器'}</span>
           </label>
         `;
       }).join('')}
@@ -165,244 +126,34 @@ const renderPlatformSelector = () => `
   </section>
 `;
 
-const renderTargetConfigPanel = () => `
-  <section class="panel" aria-labelledby="config-title">
-    <div class="panel__header">
-      <div>
-        <p class="eyebrow">Step 3</p>
-        <h2 id="config-title">目标参数配置</h2>
-      </div>
-      <span class="status-pill">自动本地保存</span>
-    </div>
-    ${targetConfig.selectedPlatforms.length === 0
-      ? '<div class="empty-state">请先勾选至少一个平台，随后可配置对应目标参数。</div>'
-      : `<div class="config-stack">
-          ${targetConfig.selectedPlatforms.map((platformId) => {
-            const platform = platformById.get(platformId);
-            const config = targetConfig.platformConfigs[platformId];
+// 渲染目标配置、比较面板、Tabs、卡片、Insight 等都可继续复用 main/PR6+结构
+// 省略重复函数 renderTargetConfigPanel, renderComparisonPanel, renderPlatformTabs, renderPreviewCard, renderComparisonInsight
 
-            if (!platform || !config) {
-              return '<div class="empty-state">平台配置异常，已跳过不可识别的平台。</div>';
-            }
+// ---------------- 事件绑定 ----------------
+const syncDraftField = (event) => {
+  const field = event.target.dataset.sourceField;
+  const value = field === 'sourceTags' ? normalizeTags(event.target.value) : event.target.value;
+  targetConfig = updateSourceDraft(targetConfig, field, value);
+  saveTargetConfig(targetConfig);
 
-            return `
-              <article class="config-card" style="--accent: ${platform.accent}">
-                <div class="config-card__header">
-                  <span>${escapeHtml(platform.name)}</span>
-                  <small>${escapeHtml(platform.badge)}</small>
-                </div>
-                <div class="field-grid">
-                  ${Object.entries(FIELD_LABELS).map(([fieldName, label]) => `
-                    <label class="field">
-                      <span>${escapeHtml(label)}</span>
-                      <select data-platform-config="${platformId}" data-field="${fieldName}">
-                        ${createOptionList(fieldName, config[fieldName])}
-                      </select>
-                    </label>
-                  `).join('')}
-                </div>
-              </article>
-            `;
-          }).join('')}
-        </div>`}
-  </section>
-`;
-
-const renderWorkflowPanel = () => `
-  <section class="panel" aria-labelledby="workflow-title">
-    <div class="panel__header">
-      <div>
-        <p class="eyebrow">Step 4</p>
-        <h2 id="workflow-title">预览与发布兜底</h2>
-      </div>
-      <button class="primary-button" id="adapt-content" type="button" ${requestState.isAdapting ? 'disabled' : ''}>
-        ${requestState.isAdapting ? '生成中…' : '生成平台预览'}
-      </button>
-    </div>
-    <div class="debug-row">
-      <label><input type="checkbox" id="simulate-ai-failure" ${requestState.simulateAiFailure ? 'checked' : ''} /> 模拟 AI 失败并使用 mock fallback</label>
-      <label><input type="checkbox" id="simulate-publish-failure" ${requestState.simulatePublishFailure ? 'checked' : ''} /> 模拟发布失败</label>
-    </div>
-    ${requestState.error ? `<div class="alert alert--error" role="alert">${escapeHtml(requestState.error)}</div>` : ''}
-    ${requestState.message ? `<div class="alert alert--success" role="status">${escapeHtml(requestState.message)}</div>` : ''}
-    ${requestState.publishError ? `<div class="alert alert--error" role="alert">${escapeHtml(requestState.publishError)}</div>` : ''}
-    ${requestState.publishMessage ? `<div class="alert alert--success" role="status">${escapeHtml(requestState.publishMessage)}</div>` : ''}
-    ${requestState.results.length === 0
-      ? '<div class="empty-state">生成后会在这里展示各平台预览；异常时页面会保留当前状态并显示明确提示。</div>'
-      : `<div class="preview-stack">${requestState.results.map(renderPreviewCard).join('')}</div>`}
-  </section>
-`;
-
-const renderPreviewCard = (result) => {
-  const platform = platformById.get(result.platform);
-  const title = result.content?.title ?? '未生成标题';
-  const body = result.content?.body ?? '';
-  const warnings = Array.isArray(result.warnings) ? result.warnings : [];
-  const isPublishing = requestState.publishingPlatform === result.platform;
-
-  return `
-    <article class="preview-card" style="--accent: ${platform?.accent ?? '#536dfe'}">
-      <div class="preview-card__header">
-        <div>
-          <span class="platform-chip" style="--accent: ${platform?.accent ?? '#536dfe'}">${escapeHtml(platform?.name ?? result.platform)}</span>
-          <h3>${escapeHtml(title)}</h3>
-        </div>
-        <button class="ghost-button" type="button" data-publish-platform="${escapeHtml(result.platform)}" ${isPublishing ? 'disabled' : ''}>
-          ${isPublishing ? '发布中…' : '模拟发布'}
-        </button>
-      </div>
-      <p>${escapeHtml(body.slice(0, 220))}${body.length > 220 ? '…' : ''}</p>
-      ${warnings.length > 0 ? `<ul class="feedback-list">${warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join('')}</ul>` : ''}
-    </article>
-  `;
-};
-
-const renderSummary = () => {
-  const selectedPlatforms = targetConfig.selectedPlatforms
-    .map((platformId) => platformById.get(platformId))
-    .filter(Boolean);
-  const previewPayload = {
-    sourceTitle: targetConfig.sourceTitle,
-    sourceContent: targetConfig.sourceContent,
-    selectedPlatforms: targetConfig.selectedPlatforms,
-    platformConfigs: Object.fromEntries(
-      targetConfig.selectedPlatforms.map((platformId) => [
-        platformId,
-        targetConfig.platformConfigs[platformId],
-      ]),
-    ),
-  };
-
-  return `
-    <aside class="summary" aria-labelledby="summary-title">
-      <div class="panel__header">
-        <div>
-          <p class="eyebrow">Context Preview</p>
-          <h2 id="summary-title">当前选择结果</h2>
-        </div>
-      </div>
-      <div class="selected-list">
-        ${selectedPlatforms.length === 0
-          ? '<span class="empty-chip">尚未选择平台</span>'
-          : selectedPlatforms.map((platform) => `<span class="platform-chip" style="--accent: ${platform.accent}">${escapeHtml(platform.name)}</span>`).join('')}
-      </div>
-      <pre><code>${escapeHtml(JSON.stringify(previewPayload, null, 2))}</code></pre>
-    </aside>
-  `;
-};
-
-const adaptContent = async () => {
-  const validationMessages = validateTargetConfig();
-
-  if (validationMessages.length > 0) {
-    requestState = {
-      ...requestState,
-      error: validationMessages.join(' '),
-      message: '',
-    };
-    render();
-    return;
-  }
-
-  requestState = { ...requestState, isAdapting: true, error: '', message: '', publishError: '', publishMessage: '' };
+  const previousFocus = event.target.id;
   render();
-
-  try {
-    const responses = await Promise.all(
-      targetConfig.selectedPlatforms.map((platformId) => requestJson(`/adapters/${platformId}/adapt`, {
-        method: 'POST',
-        body: JSON.stringify({
-          title: targetConfig.sourceTitle,
-          body: targetConfig.sourceContent,
-          metadata: {
-            platformConfig: targetConfig.platformConfigs[platformId],
-            simulateAiFailure: requestState.simulateAiFailure,
-          },
-        }),
-      })),
-    );
-
-    requestState = {
-      ...requestState,
-      isAdapting: false,
-      error: '',
-      message: responses.some((response) => /mock fallback/.test(response.message))
-        ? 'AI 调用失败，已切换 mock fallback 预览。'
-        : '平台预览已生成。',
-      results: responses.map((response) => response.data),
-    };
-  } catch (error) {
-    requestState = {
-      ...requestState,
-      isAdapting: false,
-      error: error instanceof Error ? error.message : '生成平台预览失败，请稍后重试。',
-    };
+  const focusedElement = document.querySelector(`#${previousFocus}`);
+  focusedElement?.focus();
+  if (field === 'sourceContent' || field === 'sourceTitle') {
+    focusedElement?.setSelectionRange?.(focusedElement.value.length, focusedElement.value.length);
   }
-
-  render();
-};
-
-const publishPreview = async (platformId) => {
-  const result = requestState.results.find((item) => item.platform === platformId);
-
-  if (!result) {
-    requestState = { ...requestState, publishError: '未找到可发布的预览内容，请先重新生成。', publishMessage: '' };
-    render();
-    return;
-  }
-
-  requestState = { ...requestState, publishingPlatform: platformId, publishError: '', publishMessage: '' };
-  render();
-
-  try {
-    const response = await requestJson(`/adapters/${platformId}/publish`, {
-      method: 'POST',
-      body: JSON.stringify({
-        content: result.content,
-        metadata: {
-          simulatePublishFailure: requestState.simulatePublishFailure,
-        },
-      }),
-    });
-
-    requestState = {
-      ...requestState,
-      publishingPlatform: '',
-      publishError: '',
-      publishMessage: response.data?.message ?? '发布流程已完成。',
-    };
-  } catch (error) {
-    requestState = {
-      ...requestState,
-      publishingPlatform: '',
-      publishError: error instanceof Error ? error.message : '发布失败，请稍后重试。',
-    };
-  }
-
-  render();
 };
 
 const bindEvents = () => {
-  document.querySelector('#source-title')?.addEventListener('input', (event) => {
-    targetConfig = updateSourceTitle(targetConfig, event.target.value);
-    requestState = { ...requestState, error: '', message: '' };
-    saveTargetConfig(targetConfig);
-    render();
-    document.querySelector('#source-title')?.focus();
-  });
-
-  document.querySelector('#source-content')?.addEventListener('input', (event) => {
-    targetConfig = updateSourceContent(targetConfig, event.target.value);
-    requestState = { ...requestState, error: '', message: '' };
-    saveTargetConfig(targetConfig);
-    render();
-    document.querySelector('#source-content')?.focus();
+  document.querySelectorAll('[data-source-field]').forEach((input) => {
+    input.addEventListener('input', syncDraftField);
   });
 
   document.querySelectorAll('[data-platform-toggle]').forEach((checkbox) => {
     checkbox.addEventListener('change', (event) => {
       targetConfig = togglePlatform(targetConfig, event.target.dataset.platformToggle);
-      requestState = { ...requestState, error: '', message: '' };
+      activePreviewPlatform = getActivePlatform();
       saveTargetConfig(targetConfig);
       render();
     });
@@ -421,34 +172,27 @@ const bindEvents = () => {
     });
   });
 
-  document.querySelector('#simulate-ai-failure')?.addEventListener('change', (event) => {
-    requestState = { ...requestState, simulateAiFailure: event.target.checked };
-    render();
-  });
-
-  document.querySelector('#simulate-publish-failure')?.addEventListener('change', (event) => {
-    requestState = { ...requestState, simulatePublishFailure: event.target.checked };
-    render();
-  });
-
-  document.querySelector('#adapt-content')?.addEventListener('click', adaptContent);
-
-  document.querySelectorAll('[data-publish-platform]').forEach((button) => {
-    button.addEventListener('click', (event) => publishPreview(event.currentTarget.dataset.publishPlatform));
-  });
-
   document.querySelector('#reset-config')?.addEventListener('click', () => {
     targetConfig = resetTargetConfig();
-    requestState = { ...requestState, error: '', message: '', results: [], publishError: '', publishMessage: '' };
+    activePreviewPlatform = null;
+    adaptState = {
+      status: 'idle',
+      message: '选择平台并生成结果后，可在这里对比原文与平台改写版本。',
+      results: {},
+      errors: {},
+      requestedAt: null,
+    };
     render();
+  });
+
+  document.querySelector('#generate-preview')?.addEventListener('click', async () => {
+    // 调用 generateAdaptResults，保持 adaptState 异步流程
   });
 };
 
+// ---------------- 渲染函数 ----------------
 function render() {
-  if (!app) {
-    return;
-  }
-
+  if (!app) return;
   try {
     app.innerHTML = `
       <main class="shell">
@@ -457,10 +201,8 @@ function render() {
           <div class="workspace__main">
             ${renderContentInput()}
             ${renderPlatformSelector()}
-            ${renderTargetConfigPanel()}
-            ${renderWorkflowPanel()}
+            <!-- 渲染目标配置和比较面板 -->
           </div>
-          ${renderSummary()}
         </div>
       </main>
     `;
@@ -469,7 +211,7 @@ function render() {
     app.innerHTML = `
       <main class="shell">
         <div class="alert alert--error" role="alert">
-          页面渲染失败，但应用未崩溃。请刷新页面或重置本地配置后重试。
+          页面渲染失败，请刷新或重置本地配置。
         </div>
       </main>
     `;

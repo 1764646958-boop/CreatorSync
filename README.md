@@ -1,38 +1,42 @@
+## Backend Unified Adaptation API
 
-# CreatorSync
+CreatorSync backend exposes `POST /api/adapt` for generating multiple platform versions from one draft.
 
-CreatorSync 是一个面向创作者的多平台内容发布助手。项目目标是帮助创作者在统一工作流中管理内容草稿、发布配置和多平台分发流程。
+The endpoint accepts:
 
-当前项目聚焦于：
+- `draft`
+- `platforms`
+- optional per-platform `targetConfig`
 
-- AI 驱动的多平台内容改写
-- 平台风格与格式自动适配
-- 可扩展 Adapter 架构
-- 一键模拟发布工作流
-- 持续 PR 工程化交付
+and dispatches requests through the registered platform adapter architecture.
 
-> 当前仓库处于第一阶段开发中，已完成基础 monorepo 工程结构与前后端基础能力初始化，并逐步构建内容输入与平台配置能力。
+Features:
+
+- Multi-platform adaptation in a single request
+- Unified response structure
+- Shared prompt template loading
+- Adapter-based content transformation
+- Deterministic mock fallback mode
+
+Prompt templates for the unified adaptation flow live in `prompts/`.
+
+No new third-party dependency was added; local development works without `OPENAI_API_KEY` by using deterministic mock fallback content.
 
 ---
 
-## 技术栈
+## Publish History & Export
 
-- Monorepo：npm workspaces
-- Frontend：Next.js、TypeScript、Tailwind CSS
-- Backend：Express、TypeScript
-- Runtime：Node.js 20+、npm 10+
+CreatorSync records adaptation and publishing activity into a local publish history store.
 
----
+After a successful adaptation or mock publishing operation, the backend saves:
 
-## 目录结构
+- Platform
+- Publish time
+- Title
+- Summary
+- Publish status
+
+History is stored in:
 
 ```text
-CreatorSync/
-├── backend/
-├── frontend/
-├── docs/
-├── prompts/
-├── .github/
-├── .env.example
-├── package.json
-└── README.md
+./data/publish-history.json

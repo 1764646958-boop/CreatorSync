@@ -1,4 +1,4 @@
-import { Request, Router } from 'express';
+import { Request, Response, Router } from 'express';
 import { getPlatformAdapter, listPlatformAdapters } from '../adapters/registry';
 import {
   PlatformAdapterInput,
@@ -8,10 +8,12 @@ import {
   PlatformOutputContent,
 } from '../adapters/types';
 import { HttpError } from '../types/http-error';
+import { saveAdapterResultToHistory } from '../history';
 import { sendSuccess } from '../utils/response';
 
 const router = Router();
 
+// 列出所有平台适配器
 router.get('/', (_req, res) => {
   sendSuccess(
     res,
@@ -23,15 +25,14 @@ router.get('/', (_req, res) => {
   );
 });
 
-router.post('/:platform/adapt', async (req, res, next) => {
+// 核心 adapt 接口
+router.post('/:platform/adapt', async (req: Request, res: Response, next) => {
   try {
     const platform = normalizePlatform(req.params.platform);
     const adapter = getPlatformAdapter(platform);
 
     if (!adapter) {
-      throw new HttpError(`暂不支持 ${platform} 平台适配，请重新选择平台。`, 404, 'UNSUPPORTED_PLATFORM', {
-        platform,
-      });
+      throw new HttpError(`暂不支持 ${platform} 平台适配，请重新选择平台。`, 404, 'UNSUPPORTED_PLATFORM', { platform });
     }
 
     const input = normalizeAdapterInput(req.body);
@@ -49,15 +50,14 @@ router.post('/:platform/adapt', async (req, res, next) => {
       return;
     }
 
+    // fallback mock preview
     try {
       const platform = normalizePlatform(req.params.platform);
       const adapter = getPlatformAdapter(platform);
       const input = normalizeAdapterInput(req.body);
 
       if (!adapter) {
-        throw new HttpError(`暂不支持 ${platform} 平台适配，请重新选择平台。`, 404, 'UNSUPPORTED_PLATFORM', {
-          platform,
-        });
+        throw new HttpError(`暂不支持 ${platform} 平台适配，请重新选择平台。`, 404, 'UNSUPPORTED_PLATFORM', { platform });
       }
 
       sendSuccess(
@@ -71,15 +71,14 @@ router.post('/:platform/adapt', async (req, res, next) => {
   }
 });
 
-router.post('/:platform/publish', async (req, res, next) => {
+// 模拟发布接口
+router.post('/:platform/publish', async (req: Request, res: Response, next) => {
   try {
     const platform = normalizePlatform(req.params.platform);
     const adapter = getPlatformAdapter(platform);
 
     if (!adapter) {
-      throw new HttpError(`暂不支持 ${platform} 平台发布，请重新选择平台。`, 404, 'UNSUPPORTED_PLATFORM', {
-        platform,
-      });
+      throw new HttpError(`暂不支持 ${platform} 平台发布，请重新选择平台。`, 404, 'UNSUPPORTED_PLATFORM', { platform });
     }
 
     const content = normalizePublishContent(req.body);
@@ -93,23 +92,28 @@ router.post('/:platform/publish', async (req, res, next) => {
       );
     }
 
-    sendSuccess(res, {
-      platform,
-      status: 'mock_published',
-      message: `${adapter.adapterName} 模拟发布成功`,
-      publishedAt: new Date().toISOString(),
-      content,
-    }, '发布流程已完成');
+    sendSuccess(
+      res,
+      {
+        platform,
+        status: 'mock_published',
+        message: `${adapter.adapterName} 模拟发布成功`,
+        publishedAt: new Date().toISOString(),
+        content,
+      },
+      '发布流程已完成',
+    );
   } catch (error) {
     next(error);
   }
 });
 
+// ---------- 工具函数 ----------
+
 const normalizePlatform = (platform: unknown): PlatformId => {
   if (typeof platform !== 'string' || platform.trim().length === 0) {
     throw new HttpError('请选择要处理的平台。', 400, 'PLATFORM_REQUIRED');
   }
-
   return platform.trim() as PlatformId;
 };
 
@@ -123,6 +127,7 @@ const normalizeAdapterInput = (body: unknown): PlatformAdapterInput => {
     draft?: Partial<PlatformAdapterInput> & { content?: unknown; sourceContent?: unknown };
     sourceContent?: unknown;
   };
+
   const draft = payload.draft && typeof payload.draft === 'object' ? payload.draft : payload;
   const title = typeof draft.title === 'string' ? draft.title.trim() : '';
   const bodyText = pickBodyText(draft)?.trim() ?? '';
@@ -149,21 +154,10 @@ const normalizeAdapterInput = (body: unknown): PlatformAdapterInput => {
   };
 };
 
-const pickBodyText = (
-  draft: Partial<PlatformAdapterInput> & { content?: unknown; sourceContent?: unknown },
-): string | undefined => {
-  if (typeof draft.body === 'string') {
-    return draft.body;
-  }
-
-  if (typeof draft.content === 'string') {
-    return draft.content;
-  }
-
-  if (typeof draft.sourceContent === 'string') {
-    return draft.sourceContent;
-  }
-
+const pickBodyText = (draft: Partial<PlatformAdapterInput> & { content?: unknown; sourceContent?: unknown }): string | undefined => {
+  if (typeof draft.body === 'string') return draft.body;
+  if (typeof draft.content === 'string') return draft.content;
+  if (typeof draft.sourceContent === 'string') return draft.sourceContent;
   return undefined;
 };
 
@@ -172,10 +166,7 @@ const normalizePublishContent = (body: unknown): PlatformOutputContent => {
     throw new HttpError('请求体必须包含待发布内容。', 400, 'INVALID_REQUEST_BODY');
   }
 
-  const payload = body as {
-    content?: Partial<PlatformOutputContent>;
-    result?: { content?: Partial<PlatformOutputContent> };
-  };
+  const payload = body as { content?: Partial<PlatformOutputContent>; result?: { content?: Partial<PlatformOutputContent> } };
   const content = payload.content ?? payload.result?.content;
   const title = typeof content?.title === 'string' ? content.title.trim() : '';
   const bodyText = typeof content?.body === 'string' ? content.body.trim() : '';
@@ -195,23 +186,19 @@ const normalizePublishContent = (body: unknown): PlatformOutputContent => {
     summary: typeof content?.summary === 'string' ? content.summary : undefined,
     tags: Array.isArray(content?.tags) ? content.tags.filter((tag): tag is string => typeof tag === 'string') : [],
     assets: Array.isArray(content?.assets) ? content.assets : [],
-    platformFields: content?.platformFields && typeof content.platformFields === 'object'
-      ? content.platformFields
-      : {},
+    platformFields: content?.platformFields && typeof content.platformFields === 'object' ? content.platformFields : {},
   };
 };
 
 const shouldSimulateAiFailure = (req: Request): boolean => {
   const headerValue = req.headers['x-simulate-ai-failure'];
   const body = req.body as { simulateAiFailure?: unknown; metadata?: { simulateAiFailure?: unknown } };
-
   return headerValue === 'true' || body?.simulateAiFailure === true || body?.metadata?.simulateAiFailure === true;
 };
 
 const shouldSimulatePublishFailure = (req: Request): boolean => {
   const headerValue = req.headers['x-simulate-publish-failure'];
   const body = req.body as { simulatePublishFailure?: unknown; metadata?: { simulatePublishFailure?: unknown } };
-
   return headerValue === 'true' || body?.simulatePublishFailure === true || body?.metadata?.simulatePublishFailure === true;
 };
 

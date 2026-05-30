@@ -4,7 +4,8 @@ declare module 'express' {
     originalUrl: string;
     params: Record<string, string>;
     body: unknown;
-    headers: Record<string, unknown>;
+    headers: Record<string, string | undefined>;
+    query: Record<string, string | undefined>;
   }
 
   export interface Response<T = unknown> {
@@ -12,6 +13,8 @@ declare module 'express' {
     json(body: T): this;
     statusCode: number;
     on(event: 'finish', listener: () => void): this;
+    setHeader(name: string, value: string): this;
+    send(body: string): this;
   }
 
   export type NextFunction = (err?: unknown) => void;

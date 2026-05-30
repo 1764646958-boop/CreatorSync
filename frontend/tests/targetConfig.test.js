@@ -3,10 +3,11 @@ import {
   PLATFORM_DEFINITIONS,
   createDefaultTargetConfig,
   normalizeTargetConfig,
+  normalizeTags,
   togglePlatform,
   updatePlatformConfig,
   updateSourceContent,
-  updateSourceTitle,
+  updateSourceDraft,
 } from '../src/config.js';
 
 const defaults = createDefaultTargetConfig();
@@ -25,15 +26,24 @@ const customized = updatePlatformConfig(withWechat, 'wechat', 'tone', '温暖共
 assert.equal(customized.platformConfigs.wechat.tone, '温暖共情');
 assert.equal(withWechat.platformConfigs.wechat.tone, '专业可信');
 
-const withTitle = updateSourceTitle(customized, '发布标题');
+const withTitle = updateSourceDraft(customized, 'sourceTitle', '发布标题');
 assert.equal(withTitle.sourceTitle, '发布标题');
 
 const withContent = updateSourceContent(withTitle, '这是一段待改写内容');
 assert.equal(withContent.sourceContent, '这是一段待改写内容');
 
+const withUpdatedTitle = updateSourceDraft(withContent, 'sourceTitle', '原始标题');
+assert.equal(withUpdatedTitle.sourceTitle, '原始标题');
+
+const withTags = updateSourceDraft(withUpdatedTitle, 'sourceTags', 'AI, 发布，AI');
+assert.deepEqual(withTags.sourceTags, ['AI', '发布']);
+
+assert.deepEqual(normalizeTags('#效率, 内容发布\n多平台'), ['效率', '内容发布', '多平台']);
+
 const normalized = normalizeTargetConfig({
   sourceTitle: '标题',
   sourceContent: '草稿',
+  sourceTags: ['效率', '内容发布'],
   selectedPlatforms: ['wechat', 'unknown'],
   platformConfigs: {
     wechat: {
@@ -43,6 +53,7 @@ const normalized = normalizeTargetConfig({
 });
 
 assert.equal(normalized.sourceTitle, '标题');
+assert.deepEqual(normalized.sourceTags, ['效率', '内容发布']);
 assert.deepEqual(normalized.selectedPlatforms, ['wechat']);
 assert.equal(normalized.platformConfigs.wechat.tone, '温暖共情');
 assert.equal(normalized.platformConfigs.wechat.length, '长文');
