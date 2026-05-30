@@ -5,9 +5,12 @@ import { Workspace } from "@/components/Workspace";
 
 export function Layout() {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col overflow-hidden border-x border-white/70 bg-white/30 shadow-2xl shadow-indigo-100/60">
+    <div className="min-h-screen bg-transparent">
       <Header />
-      <div className="flex flex-1 flex-col gap-5 p-4 lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] lg:p-6 xl:grid-cols-[25rem_minmax(0,1fr)]">
+      <div
+        className="mx-auto grid w-full max-w-[1500px] gap-5 px-4 py-5 lg:grid-cols-[23rem_minmax(0,1fr)] lg:px-6 xl:grid-cols-[26rem_minmax(0,1fr)]"
+        id="workspace"
+      >
         <Sidebar />
         <Workspace />
       </div>
