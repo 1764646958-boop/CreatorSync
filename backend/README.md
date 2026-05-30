@@ -29,6 +29,26 @@ Example request:
 }
 ```
 
+## Bilibili adapter
+
+This PR adds a Bilibili content adapter exposed through the shared platform adapter contract.
+
+- `GET /adapters` now includes `bilibili` in the registered adapter list.
+- `POST /adapters/bilibili/adapt` accepts the unified draft input shape and returns compatible structured content with `content.title`, `content.body`, `content.tags`, `content.assets`, and `content.platformFields`.
+- The adapter deterministically rewrites source material into a more spoken, interactive Bilibili style for video descriptions, dynamic posts, and community copy.
+- The output adds Bilibili-oriented platform fields such as `videoDescription`, `dynamicText`, `communityCopy`, `introHook`, and `interactionGuide` while preserving the shared adapter result shape.
+- No third-party AI SDK or runtime dependency was added. The adapter always provides stable mock fallback output through `generationMode: "mock_fallback"` when no external AI integration is configured.
+
+Example request:
+
+```json
+{
+  "title": "用统一工作流提升内容分发效率",
+  "body": "CreatorSync 帮助创作者把一段原始内容改写成不同平台适合的版本。它强调统一草稿、平台配置、预览和发布准备。",
+  "tags": ["内容分发"]
+}
+```
+
 ## Zhihu adapter
 
 This PR adds a Zhihu content adapter exposed through the same shared platform adapter contract.
@@ -50,4 +70,4 @@ Example request:
 
 ## Source note
 
-The Xiaohongshu and Zhihu style rules, prompt-like structures, and mock fallback wording are original to their PRs. No historical business code, old prompt template, or personal project text-processing logic was reused for the Zhihu adapter.
+The Xiaohongshu, Zhihu, and Bilibili style rules, prompt-like structures, and mock fallback wording are original to their PRs. No historical business code, old prompt template, or personal project text-processing logic was reused for the Bilibili adapter.
