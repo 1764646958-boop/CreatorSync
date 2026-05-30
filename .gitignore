@@ -1,6 +1,18 @@
 # Dependencies
 node_modules/
 
+# Next.js
+.next/
+out/
+
+# Production builds
+dist/
+build/
+
+# Environment files
+.env*.local
+
+# Logs
 # Build outputs
 .next/
 dist/

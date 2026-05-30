@@ -1,14 +1,27 @@
 {
-  "name": "frontend",
+  "name": "creatorsync-frontend",
   "version": "0.1.0",
   "private": true,
-  "description": "CreatorSync frontend workspace placeholder for Next.js, TypeScript and Tailwind CSS.",
+  "description": "CreatorSync frontend workspace built with Next.js, TypeScript and Tailwind CSS.",
   "scripts": {
-    "dev": "node -e \"console.log('Frontend workspace initialized. Next.js dev server will be wired in a follow-up PR.')\"",
-    "build": "node -e \"console.log('Frontend build placeholder: no business code yet.')\"",
-    "typecheck": "node -e \"console.log('Frontend typecheck placeholder: TypeScript config will be expanded with app code.')\"",
-    "lint": "node -e \"console.log('Frontend lint placeholder: lint rules will be enabled with app code.')\""
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "next": "^15.3.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "@types/react": "^19.0.12",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3"
+  }
 }
