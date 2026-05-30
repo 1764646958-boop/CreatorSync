@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { ApiResponse } from '../types/api';
+import { ApiErrorPayload, ApiResponse } from '../types/api';
 
 export const sendSuccess = <T>(
   res: Response,
@@ -19,11 +19,11 @@ export const sendError = (
   res: Response,
   message = 'internal server error',
   statusCode = 500,
-  data: unknown = null,
-): Response<ApiResponse> => {
+  error: ApiErrorPayload = { code: 'INTERNAL_ERROR' },
+): Response<ApiResponse<ApiErrorPayload>> => {
   return res.status(statusCode).json({
     success: false,
-    data,
+    data: error,
     message,
     timestamp: new Date().toISOString(),
   });

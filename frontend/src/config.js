@@ -75,6 +75,7 @@ const getDefaultPlatformConfig = () =>
 
 export const createDefaultTargetConfig = () => ({
   version: 1,
+  sourceTitle: '',
   sourceContent: '',
   selectedPlatforms: [],
   platformConfigs: getDefaultPlatformConfig(),
@@ -90,12 +91,13 @@ export const normalizeTargetConfig = (candidate) => {
 
   const validPlatformIds = new Set(PLATFORM_DEFINITIONS.map((platform) => platform.id));
   const selectedPlatforms = Array.isArray(candidate.selectedPlatforms)
-    ? candidate.selectedPlatforms.filter((platformId) => validPlatformIds.has(platformId))
+    ? Array.from(new Set(candidate.selectedPlatforms.filter((platformId) => validPlatformIds.has(platformId))))
     : [];
 
   return {
     ...defaults,
     ...candidate,
+    sourceTitle: typeof candidate.sourceTitle === 'string' ? candidate.sourceTitle : '',
     sourceContent: typeof candidate.sourceContent === 'string' ? candidate.sourceContent : '',
     selectedPlatforms,
     platformConfigs: PLATFORM_DEFINITIONS.reduce((configs, platform) => {
@@ -110,31 +112,53 @@ export const normalizeTargetConfig = (candidate) => {
 };
 
 export const togglePlatform = (targetConfig, platformId) => {
-  const selectedPlatforms = targetConfig.selectedPlatforms.includes(platformId)
-    ? targetConfig.selectedPlatforms.filter((selectedId) => selectedId !== platformId)
-    : [...targetConfig.selectedPlatforms, platformId];
+  const validPlatformIds = new Set(PLATFORM_DEFINITIONS.map((platform) => platform.id));
+
+  if (!validPlatformIds.has(platformId)) {
+    return normalizeTargetConfig(targetConfig);
+  }
+
+  const normalizedConfig = normalizeTargetConfig(targetConfig);
+  const selectedPlatforms = normalizedConfig.selectedPlatforms.includes(platformId)
+    ? normalizedConfig.selectedPlatforms.filter((selectedId) => selectedId !== platformId)
+    : [...normalizedConfig.selectedPlatforms, platformId];
 
   return {
-    ...targetConfig,
+    ...normalizedConfig,
     selectedPlatforms,
     updatedAt: new Date().toISOString(),
   };
 };
 
-export const updatePlatformConfig = (targetConfig, platformId, field, value) => ({
-  ...targetConfig,
-  platformConfigs: {
-    ...targetConfig.platformConfigs,
-    [platformId]: {
-      ...targetConfig.platformConfigs[platformId],
-      [field]: value,
+export const updatePlatformConfig = (targetConfig, platformId, field, value) => {
+  const normalizedConfig = normalizeTargetConfig(targetConfig);
+  const validPlatformIds = new Set(PLATFORM_DEFINITIONS.map((platform) => platform.id));
+
+  if (!validPlatformIds.has(platformId) || !Object.hasOwn(FIELD_OPTIONS, field)) {
+    return normalizedConfig;
+  }
+
+  return {
+    ...normalizedConfig,
+    platformConfigs: {
+      ...normalizedConfig.platformConfigs,
+      [platformId]: {
+        ...normalizedConfig.platformConfigs[platformId],
+        [field]: FIELD_OPTIONS[field].includes(value) ? value : normalizedConfig.platformConfigs[platformId][field],
+      },
     },
-  },
+    updatedAt: new Date().toISOString(),
+  };
+};
+
+export const updateSourceContent = (targetConfig, sourceContent) => ({
+  ...normalizeTargetConfig(targetConfig),
+  sourceContent: typeof sourceContent === 'string' ? sourceContent : '',
   updatedAt: new Date().toISOString(),
 });
 
-export const updateSourceContent = (targetConfig, sourceContent) => ({
-  ...targetConfig,
-  sourceContent,
+export const updateSourceTitle = (targetConfig, sourceTitle) => ({
+  ...normalizeTargetConfig(targetConfig),
+  sourceTitle: typeof sourceTitle === 'string' ? sourceTitle : '',
   updatedAt: new Date().toISOString(),
 });

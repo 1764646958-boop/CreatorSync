@@ -4,6 +4,7 @@ declare module 'express' {
     originalUrl: string;
     params: Record<string, string>;
     body: unknown;
+    headers: Record<string, unknown>;
   }
 
   export interface Response<T = unknown> {

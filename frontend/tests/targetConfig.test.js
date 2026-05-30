@@ -6,11 +6,13 @@ import {
   togglePlatform,
   updatePlatformConfig,
   updateSourceContent,
+  updateSourceTitle,
 } from '../src/config.js';
 
 const defaults = createDefaultTargetConfig();
 
 assert.deepEqual(defaults.selectedPlatforms, []);
+assert.equal(defaults.sourceTitle, '');
 assert.equal(Object.keys(defaults.platformConfigs).length, PLATFORM_DEFINITIONS.length);
 
 const withWechat = togglePlatform(defaults, 'wechat');
@@ -23,10 +25,14 @@ const customized = updatePlatformConfig(withWechat, 'wechat', 'tone', '温暖共
 assert.equal(customized.platformConfigs.wechat.tone, '温暖共情');
 assert.equal(withWechat.platformConfigs.wechat.tone, '专业可信');
 
-const withContent = updateSourceContent(customized, '这是一段待改写内容');
+const withTitle = updateSourceTitle(customized, '发布标题');
+assert.equal(withTitle.sourceTitle, '发布标题');
+
+const withContent = updateSourceContent(withTitle, '这是一段待改写内容');
 assert.equal(withContent.sourceContent, '这是一段待改写内容');
 
 const normalized = normalizeTargetConfig({
+  sourceTitle: '标题',
   sourceContent: '草稿',
   selectedPlatforms: ['wechat', 'unknown'],
   platformConfigs: {
@@ -36,6 +42,7 @@ const normalized = normalizeTargetConfig({
   },
 });
 
+assert.equal(normalized.sourceTitle, '标题');
 assert.deepEqual(normalized.selectedPlatforms, ['wechat']);
 assert.equal(normalized.platformConfigs.wechat.tone, '温暖共情');
 assert.equal(normalized.platformConfigs.wechat.length, '长文');

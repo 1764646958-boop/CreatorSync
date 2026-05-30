@@ -56,7 +56,11 @@ export function saveDraft(draft, storage = globalThis.localStorage) {
   });
 
   if (storage) {
-    storage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(normalizedDraft));
+    try {
+      storage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(normalizedDraft));
+    } catch {
+      // Storage can be unavailable or full; keep the editor usable with in-memory draft state.
+    }
   }
 
   return normalizedDraft;

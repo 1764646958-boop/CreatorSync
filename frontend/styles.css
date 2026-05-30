@@ -372,3 +372,133 @@ pre {
     grid-template-columns: 1fr;
   }
 }
+
+.field input {
+  width: 100%;
+  border: 1px solid #d8e0ee;
+  border-radius: 16px;
+  padding: 13px 14px;
+  outline: none;
+  color: #172033;
+  background: #fbfcff;
+  font: inherit;
+}
+
+.field input:focus {
+  border-color: #536dfe;
+  box-shadow: 0 0 0 4px rgba(83, 109, 254, 0.12);
+}
+
+.content-panel .field + .field {
+  margin-top: 16px;
+}
+
+.feedback-list {
+  margin: 14px 0 0;
+  border-radius: 16px;
+  padding: 12px 16px 12px 34px;
+  background: #fff7ed;
+  color: #a75a05;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.success-text {
+  margin: 14px 0 0;
+  border-radius: 16px;
+  padding: 12px 16px;
+  background: #ecfdf3;
+  color: #217a3b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.primary-button {
+  cursor: pointer;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #536dfe;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 12px 24px rgba(83, 109, 254, 0.22);
+}
+
+.primary-button:disabled,
+.ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.debug-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #526174;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.debug-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #f7f9fd;
+}
+
+.alert {
+  margin-bottom: 14px;
+  border-radius: 18px;
+  padding: 14px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.alert--error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.alert--success {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.preview-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.preview-card {
+  border: 1px solid color-mix(in srgb, var(--accent), #ffffff 68%);
+  border-radius: 22px;
+  padding: 18px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent), #ffffff 95%), #fff);
+}
+
+.preview-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.preview-card h3 {
+  margin: 10px 0 8px;
+  color: #172033;
+}
+
+.preview-card p {
+  margin: 0;
+  color: #526174;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
