@@ -1,73 +1,371 @@
 # CreatorSync Backend
 
-CreatorSync backend provides the Express + TypeScript API layer for content adaptation and publishing workflow preparation.
+CreatorSync Backend provides the Express + TypeScript API layer for content adaptation, platform-specific content transformation, and publishing workflow preparation.
 
-## Local development
+The backend follows an extensible Adapter Architecture that enables one source draft to be transformed into multiple platform-specific versions while keeping a unified API contract.
+
+---
+
+## Features
+
+### Core Infrastructure
+
+* Express + TypeScript API service
+* Unified response format
+* CORS support
+* Environment-based configuration
+* Health check endpoint
+
+### Adapter Architecture
+
+Implemented adapters:
+
+* Xiaohongshu Adapter
+* Zhihu Adapter
+* Bilibili Adapter
+* WeChat Official Accounts Adapter
+
+Shared capabilities:
+
+* Unified draft input schema
+* Platform-specific content transformation
+* Consistent output structure
+* Mock AI fallback mode
+* Extensible adapter registration mechanism
+
+---
+
+## Local Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start backend service:
 
 ```bash
 npm run dev --workspace backend
 ```
 
-The service reads `PORT` from `backend/.env.example` and defaults to `3001` when unset.
+Build:
 
-## Xiaohongshu adapter
+```bash
+npm run build --workspace backend
+```
 
-This PR adds a Xiaohongshu content adapter exposed through the shared platform adapter contract.
+---
 
-- `GET /adapters` lists registered adapters and capabilities.
-- `POST /adapters/xiaohongshu/adapt` accepts the unified draft input shape and returns compatible structured content with `content.title`, `content.body`, `content.tags`, `content.assets`, and `content.platformFields`.
-- The adapter uses deterministic CreatorSync-authored rules for emotional rewriting, emoji accents, short-sentence structure, and seeding-style recommendations.
-- No third-party AI SDK or runtime dependency was added. When no API key exists, the adapter still returns stable mock fallback output through `generationMode: "mock_fallback"`.
+## Environment Variables
 
-Example request:
+Copy environment variables:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Example:
+
+```env
+PORT=3001
+CORS_ORIGIN=*
+```
+
+The backend defaults to port `3001` when `PORT` is not specified.
+
+---
+
+## Health Check
+
+### Request
+
+```http
+GET /health
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "service": "CreatorSync Backend",
+    "status": "ok"
+  },
+  "message": "success"
+}
+```
+
+---
+
+## Adapter Discovery
+
+### Request
+
+```http
+GET /adapters
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "registeredAdapters": [
+      "xiaohongshu",
+      "zhihu",
+      "bilibili",
+      "wechat_official_account"
+    ]
+  }
+}
+```
+
+---
+
+# Adapter APIs
+
+All adapters use the same unified draft input structure.
+
+## Unified Draft Input
 
 ```json
 {
   "title": "用统一工作流提升内容分发效率",
-  "body": "CreatorSync 帮助创作者把一段原始内容改写成不同平台适合的版本。它强调统一草稿、平台配置、预览和发布准备。",
+  "body": "CreatorSync 帮助创作者把一段原始内容改写成不同平台适合的版本。",
   "tags": ["内容分发"]
 }
 ```
 
-## Zhihu adapter
+---
 
-This PR adds a Zhihu content adapter exposed through the same shared platform adapter contract.
+## Xiaohongshu Adapter
 
-- `GET /adapters` now includes `zhihu` in the registered adapter list.
-- `POST /adapters/zhihu/adapt` accepts the unified draft input shape and returns compatible structured content with `content.title`, `content.body`, `content.tags`, `content.assets`, and `content.platformFields`.
-- The adapter deterministically reorganizes source material into a Zhihu-style “问题—分析—结论” / 总分总 answer, emphasizing rational explanation, assumptions, boundaries, and executable judgment rather than simple word substitution.
-- No third-party AI SDK or runtime dependency was added. The adapter always provides stable mock fallback output through `generationMode: "mock_fallback"` when no external AI integration is configured.
+### Endpoint
 
-Example request:
+```http
+POST /adapters/xiaohongshu/adapt
+```
+
+### Characteristics
+
+* Emotional tone
+* Recommendation style
+* Emoji enhancement
+* Lifestyle sharing structure
+* Short paragraph formatting
+
+### Output Fields
 
 ```json
 {
-  "title": "用统一工作流提升内容分发效率",
-  "body": "CreatorSync 帮助创作者把一段原始内容改写成不同平台适合的版本。它强调统一草稿、平台配置、预览和发布准备。",
-  "tags": ["内容分发"]
+  "content": {
+    "title": "",
+    "body": "",
+    "tags": [],
+    "assets": [],
+    "platformFields": {}
+  }
 }
 ```
 
-## WeChat Official Accounts adapter
+---
 
-This PR adds a WeChat Official Accounts content adapter exposed through the same shared platform adapter contract.
+## Zhihu Adapter
 
-- `GET /adapters` now includes `wechat_official_account` in the registered adapter list.
-- `POST /adapters/wechat_official_account/adapt` accepts the unified draft input shape and returns compatible structured content with `content.title`, `content.body`, `content.tags`, `content.assets`, and `content.platformFields`.
-- `POST /adapters/wechat/adapt` is also accepted as a compatibility alias for frontend target configs that use the shorter `wechat` platform id; the normalized result still reports `platform: "wechat_official_account"`.
-- The adapter deterministically expands source material into a public-account long-form article with a title, 导语, numbered subheadings, short paragraphs, layout hints, image placeholders, and a closing call-to-action.
-- No third-party AI SDK or runtime dependency was added. The adapter always provides stable mock fallback output through `generationMode: "mock_fallback"` when no external AI integration is configured.
+### Endpoint
 
-Example request:
+```http
+POST /adapters/zhihu/adapt
+```
+
+### Characteristics
+
+* Rational analysis
+* Question → Analysis → Conclusion structure
+* Long-form answer style
+* Explicit assumptions and boundaries
+* Knowledge-sharing tone
+
+### Output Fields
 
 ```json
 {
-  "title": "用统一工作流提升内容分发效率",
-  "body": "CreatorSync 帮助创作者把一段原始内容改写成不同平台适合的版本。它强调统一草稿、平台配置、预览和发布准备。公众号版本需要导语、小标题、分段和结尾引导。",
-  "tags": ["内容分发"]
+  "content": {
+    "title": "",
+    "body": "",
+    "tags": [],
+    "assets": [],
+    "platformFields": {}
+  }
 }
 ```
 
-## Source note
+---
 
-The Xiaohongshu, Zhihu, and WeChat Official Accounts style rules, prompt-like structures, article layout rules, and mock fallback wording are original to their PRs. No historical business code, old prompt template, old article template, or personal project text-processing logic was reused for the WeChat Official Accounts adapter.
+## Bilibili Adapter
+
+### Endpoint
+
+```http
+POST /adapters/bilibili/adapt
+```
+
+### Characteristics
+
+* Conversational language
+* Community interaction style
+* Video description support
+* Dynamic post generation
+* Viewer engagement guidance
+
+### Additional Platform Fields
+
+```json
+{
+  "platformFields": {
+    "videoDescription": "",
+    "dynamicText": "",
+    "communityCopy": "",
+    "introHook": "",
+    "interactionGuide": ""
+  }
+}
+```
+
+---
+
+## WeChat Official Accounts Adapter
+
+### Endpoint
+
+```http
+POST /adapters/wechat_official_account/adapt
+```
+
+Compatibility Alias:
+
+```http
+POST /adapters/wechat/adapt
+```
+
+### Characteristics
+
+* Long-form article structure
+* Intro section
+* Numbered headings
+* Reading-friendly layout
+* Closing CTA section
+
+### Additional Platform Fields
+
+```json
+{
+  "platformFields": {
+    "introduction": "",
+    "sections": [],
+    "summary": "",
+    "callToAction": ""
+  }
+}
+```
+
+---
+
+## AI Fallback Strategy
+
+Current implementation does not require external AI services.
+
+When no AI provider is configured:
+
+```json
+{
+  "generationMode": "mock_fallback"
+}
+```
+
+The backend uses deterministic platform transformation rules to guarantee:
+
+* Stable demo behavior
+* Offline execution
+* Reproducible outputs
+* No third-party AI dependency
+
+Future versions may support:
+
+* OpenAI
+* DeepSeek
+* Qwen
+* Other LLM providers
+
+through the same adapter contract.
+
+---
+
+## Project Structure
+
+```text
+backend/
+├── src/
+│   ├── adapters/
+│   │   ├── base/
+│   │   ├── xiaohongshu/
+│   │   ├── zhihu/
+│   │   ├── bilibili/
+│   │   └── wechat/
+│   │
+│   ├── routes/
+│   ├── services/
+│   ├── types/
+│   └── server.ts
+│
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+---
+
+## Originality Statement
+
+The following components are original CreatorSync implementations:
+
+* Adapter Architecture
+* Platform Adapter Contract
+* Xiaohongshu Style Rules
+* Zhihu Style Rules
+* Bilibili Style Rules
+* WeChat Official Accounts Style Rules
+* Mock AI Fallback Workflow
+* Unified Content Transformation Pipeline
+* Platform-Specific Formatting Strategies
+
+---
+
+## Dependency Disclosure
+
+Runtime Dependencies:
+
+* express
+* cors
+* dotenv
+
+Development Dependencies:
+
+* typescript
+* ts-node-dev
+
+All dependencies are declared in `backend/package.json`.
+
+---
+
+## Source Note
+
+The Xiaohongshu, Zhihu, Bilibili, and WeChat Official Accounts style rules, prompt-like structures, formatting strategies, article layout rules, and mock fallback wording are original to their respective CreatorSync PR implementations.
+
+No historical business code, old prompt templates, old article templates, previous personal project code, or proprietary text-processing logic were reused in the implementation of these adapters.
+
+All platform adaptation logic was developed specifically for the CreatorSync repository and follows the shared platform adapter contract introduced in the adapter architecture layer.
+
