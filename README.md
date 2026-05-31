@@ -1,5 +1,7 @@
 # CreatorSync
 
+demo演示视频地址：https://www.bilibili.com/video/BV1ewVS6wEdu/?vd_source=26439ddd641c65ad218414e51169ea6c#reply116669179501506
+
 CreatorSync 是一个面向内容创作者、品牌运营和新媒体团队的多平台内容发布助手。项目目标是把“一份原始草稿”整理为可复用的统一输入，并通过平台适配器生成适合小红书、知乎、Bilibili、微信公众号等渠道的结构化版本，最终支持预览、确认、模拟发布与发布历史追踪。
 
 本仓库当前以本地可运行 Demo 为主：前端提供内容输入、平台目标配置、模拟发布工作台和发布历史展示；后端提供 Express + TypeScript API、平台 Adapter、统一改写接口、mock publish 和本地 JSON 历史存储。当前阶段不依赖真实第三方发布平台，也不要求配置真实 AI Key；没有 `DEEPSEEK_API_KEY` 或显式开启 `AI_MOCK_MODE=true` 时会使用确定性的 mock fallback，便于评审复现。
