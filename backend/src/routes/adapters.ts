@@ -8,8 +8,8 @@ import {
   PlatformOutputContent,
 } from '../adapters/types';
 import { HttpError } from '../types/http-error';
-import { saveAdapterResultToHistory } from '../history';
 import { sendSuccess } from '../utils/response';
+import { adaptationService } from '../services/adaptation-service';
 
 const router = Router();
 
@@ -41,9 +41,9 @@ router.post('/:platform/adapt', async (req: Request, res: Response, next) => {
       throw new Error('Simulated AI provider failure');
     }
 
-    const result = await adapter.adapt(input);
+    const result = await adaptationService.adaptSingle(platform, input, normalizeTargetConfig(req.body));
 
-    sendSuccess(res, result, '平台预览已生成');
+    sendSuccess(res, result, result.metadata.generationMode === 'deepseek' ? 'DeepSeek 平台预览已生成' : '平台预览已生成（mock fallback）');
   } catch (error) {
     if (error instanceof HttpError) {
       next(error);
@@ -188,6 +188,25 @@ const normalizePublishContent = (body: unknown): PlatformOutputContent => {
     assets: Array.isArray(content?.assets) ? content.assets : [],
     platformFields: content?.platformFields && typeof content.platformFields === 'object' ? content.platformFields : {},
   };
+};
+
+
+const normalizeTargetConfig = (body: unknown): Record<string, unknown> => {
+  if (!body || typeof body !== 'object') {
+    return {};
+  }
+
+  const payload = body as { targetConfig?: unknown; platformConfig?: unknown };
+
+  if (payload.targetConfig && typeof payload.targetConfig === 'object' && !Array.isArray(payload.targetConfig)) {
+    return payload.targetConfig as Record<string, unknown>;
+  }
+
+  if (payload.platformConfig && typeof payload.platformConfig === 'object' && !Array.isArray(payload.platformConfig)) {
+    return payload.platformConfig as Record<string, unknown>;
+  }
+
+  return {};
 };
 
 const shouldSimulateAiFailure = (req: Request): boolean => {

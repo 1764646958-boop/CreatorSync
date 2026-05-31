@@ -8,6 +8,8 @@ import {
   PlatformOutputContent,
 } from '../adapters/types';
 import { HttpError } from '../types/http-error';
+import { getDeepSeekConfig, isDeepSeekReady } from './ai-config';
+import { DeepSeekClient } from './deepseek-client';
 
 export interface AdaptDraftInput {
   title?: string;
@@ -46,15 +48,16 @@ export interface AdaptPlatformResult {
     platformPromptPath: string;
   };
   metadata: PlatformAdapterResult['metadata'] & {
-    generationMode: 'mock_fallback';
-    aiProvider: 'deterministic_mock';
+    generationMode: GenerationMode;
+    aiProvider: AiProviderName;
     aiKeyConfigured: boolean;
+    aiModel?: string;
   };
 }
 
 export interface AdaptResponsePayload {
   requestId: string;
-  generationMode: 'mock_fallback';
+  generationMode: GenerationMode;
   aiKeyConfigured: boolean;
   results: AdaptPlatformResult[];
 }
@@ -67,49 +70,115 @@ const PLATFORM_PROMPT_RELATIVE_PATHS: Record<string, string> = {
 };
 const DEFAULT_PLATFORM_PROMPT_RELATIVE_PATH = 'prompts/platforms/default.md';
 
+type GenerationMode = 'deepseek' | 'mock_fallback';
+type AiProviderName = 'deepseek' | 'deterministic_mock';
+
+export type AiAwarePlatformAdapterResult = PlatformAdapterResult & {
+  metadata: PlatformAdapterResult['metadata'] & {
+    generationMode: GenerationMode;
+    aiProvider: AiProviderName;
+    aiKeyConfigured: boolean;
+    aiModel?: string;
+  };
+};
+
 export class AdaptationService {
   public async adapt(input: AdaptRequestInput): Promise<AdaptResponsePayload> {
-    const aiKeyConfigured = hasAiKey();
     const results: AdaptPlatformResult[] = [];
 
     for (const platform of input.platforms) {
-      const adapter = getPlatformAdapter(platform);
-
-      if (!adapter) {
-        throw new HttpError(`Unsupported platform adapter: ${platform}`, 400);
-      }
-
       const targetConfig = getTargetConfigForPlatform(input.targetConfig, platform);
-      const promptContext = buildPromptContext(input.draft, platform, targetConfig);
-      const adapterInput = buildAdapterInput(input.draft, platform, targetConfig, promptContext);
-      const adapterResult = await adapter.adapt(adapterInput);
+      const platformResult = await this.adaptSingle(platform, input.draft, targetConfig);
 
       results.push({
         platform,
-        status: adapterResult.status,
-        content: adapterResult.content,
-        warnings: adapterResult.warnings,
+        status: platformResult.status,
+        content: platformResult.content,
+        warnings: platformResult.warnings,
         targetConfig,
         prompt: {
-          templateVersion: promptContext.templateVersion,
+          templateVersion: TEMPLATE_VERSION,
           systemPromptPath: SYSTEM_PROMPT_RELATIVE_PATH,
           platformPromptPath: getPlatformPromptRelativePath(platform),
         },
-        metadata: {
-          ...adapterResult.metadata,
-          generationMode: 'mock_fallback',
-          aiProvider: 'deterministic_mock',
-          aiKeyConfigured,
-        },
+        metadata: platformResult.metadata,
       });
     }
 
     return {
       requestId: createRequestId(input),
-      generationMode: 'mock_fallback',
-      aiKeyConfigured,
+      generationMode: results.every((result) => result.metadata.generationMode === 'deepseek') ? 'deepseek' : 'mock_fallback',
+      aiKeyConfigured: results.some((result) => result.metadata.aiKeyConfigured),
       results,
     };
+  }
+
+  public async adaptSingle(
+    platform: PlatformId,
+    draft: AdaptDraftInput,
+    targetConfig: Record<string, unknown> = {},
+  ): Promise<AiAwarePlatformAdapterResult> {
+    const adapter = getPlatformAdapter(platform);
+
+    if (!adapter) {
+      throw new HttpError(`Unsupported platform adapter: ${platform}`, 400);
+    }
+
+    const deepSeekConfig = getDeepSeekConfig();
+    const promptContext = buildPromptContext(draft, platform, targetConfig);
+    const adapterInput = buildAdapterInput(draft, platform, targetConfig, promptContext);
+    const fallbackResult = await adapter.adapt(adapterInput);
+    const aiKeyConfigured = Boolean(deepSeekConfig.apiKey);
+
+    if (!isDeepSeekReady(deepSeekConfig)) {
+      return withAiMetadata(fallbackResult, {
+        generationMode: 'mock_fallback',
+        aiProvider: 'deterministic_mock',
+        aiKeyConfigured,
+      });
+    }
+
+    try {
+      const deepSeekContent = await new DeepSeekClient(deepSeekConfig).generatePlatformContent({
+        platform,
+        draft,
+        targetConfig,
+        promptContext,
+        fallbackContent: fallbackResult.content,
+      });
+
+      return withAiMetadata(
+        {
+          ...fallbackResult,
+          status: 'ready',
+          content: deepSeekContent,
+          warnings: fallbackResult.warnings,
+        },
+        {
+          generationMode: 'deepseek',
+          aiProvider: 'deepseek',
+          aiKeyConfigured,
+          aiModel: deepSeekConfig.model,
+        },
+      );
+    } catch (error) {
+      return withAiMetadata(
+        {
+          ...fallbackResult,
+          status: 'needs_review',
+          warnings: [
+            ...fallbackResult.warnings,
+            `DeepSeek 调用失败，已使用 mock fallback：${error instanceof Error ? error.message : '未知错误'}`,
+          ],
+        },
+        {
+          generationMode: 'mock_fallback',
+          aiProvider: 'deterministic_mock',
+          aiKeyConfigured,
+          aiModel: deepSeekConfig.model,
+        },
+      );
+    }
   }
 }
 
@@ -190,7 +259,22 @@ const getTargetConfigForPlatform = (
   return targetConfig;
 };
 
-const hasAiKey = (): boolean => Boolean(process.env.OPENAI_API_KEY?.trim());
+
+const withAiMetadata = (
+  result: PlatformAdapterResult,
+  metadata: {
+    generationMode: GenerationMode;
+    aiProvider: AiProviderName;
+    aiKeyConfigured: boolean;
+    aiModel?: string;
+  },
+): AiAwarePlatformAdapterResult => ({
+  ...result,
+  metadata: {
+    ...result.metadata,
+    ...metadata,
+  },
+});
 
 const createRequestId = (input: AdaptRequestInput): string => {
   const seed = `${input.draft.title ?? ''}|${input.draft.body}|${input.platforms.join(',')}`;
