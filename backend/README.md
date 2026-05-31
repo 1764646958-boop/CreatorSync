@@ -30,6 +30,7 @@ Shared capabilities:
 * Unified draft input schema
 * Platform-specific content transformation
 * Consistent output structure
+* DeepSeek AI generation mode
 * Mock AI fallback mode
 * Extensible adapter registration mechanism
 
@@ -70,14 +71,21 @@ Example:
 ```env
 PORT=3001
 CORS_ORIGIN=*
+DEEPSEEK_API_KEY=
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+AI_MOCK_MODE=false
 ```
 
 The backend defaults to port `3001` when `PORT` is not specified.
 
-Additional optional environment variables for future AI integration:
+Additional optional environment variables for DeepSeek integration:
 
-* `OPENAI_API_KEY`: optional future AI provider key
-* `OPENAI_MODEL`: optional future model name
+* `DEEPSEEK_API_KEY`: DeepSeek API Key; leave empty to use deterministic mock fallback
+* `DEEPSEEK_BASE_URL` / `DEEPSEEK_ENDPOINT`: DeepSeek OpenAI-compatible API base URL or full chat completions endpoint
+* `DEEPSEEK_MODEL`: model name, defaults to `deepseek-chat`
+* `DEEPSEEK_TIMEOUT_MS`: request timeout in milliseconds
+* `AI_MOCK_MODE` / `DEEPSEEK_MOCK_MODE`: force mock fallback even when a key is configured
 * `LOG_LEVEL`: optional backend log level
 
 ---
@@ -363,9 +371,9 @@ POST /adapters/wechat/adapt
 
 ## AI Fallback Strategy
 
-Current implementation does not require external AI services.
+The backend can call DeepSeek through its OpenAI-compatible chat completions endpoint, but it does not require external AI services for local demos.
 
-When no AI provider is configured:
+When no DeepSeek key is configured, `AI_MOCK_MODE=true`, or a DeepSeek request fails:
 
 ```json
 {
@@ -378,16 +386,9 @@ The backend uses deterministic platform transformation rules to guarantee:
 * Stable demo behavior
 * Offline execution
 * Reproducible outputs
-* No third-party AI dependency
+* No mandatory third-party AI dependency
 
-Future versions may support:
-
-* OpenAI
-* DeepSeek
-* Qwen
-* Other LLM providers
-
-through the same adapter contract.
+When `DEEPSEEK_API_KEY` is configured and mock mode is disabled, the same adapter contract returns DeepSeek-generated content with `metadata.generationMode="deepseek"`.
 
 ---
 

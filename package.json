@@ -7,9 +7,9 @@
     "backend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:frontend": "cd frontend && next dev",
-    "dev:backend": "cd backend && node dist/server.js",
+    "dev": "node scripts/dev.mjs",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "dev:backend": "npm run dev --workspace backend",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
@@ -19,8 +19,5 @@
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
-  "license": "UNLICENSED",
-  "devDependencies": {
-    "concurrently": "^8.2.0"
-  }
+  "license": "UNLICENSED"
 }

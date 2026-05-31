@@ -21,7 +21,7 @@ let adaptState = {
 };
 
 const app = document.querySelector('#app');
-const apiBaseUrl = window.__CREATORSYNC_API_BASE_URL__ ?? 'http://localhost:4000';
+const apiBaseUrl = window.__CREATORSYNC_API_BASE_URL__ ?? 'http://localhost:3001';
 const adaptApiBaseUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/adapt`;
 const supportedAdapterIds = new Set(['xiaohongshu', 'zhihu']);
 
